@@ -10,13 +10,12 @@ DelugeClient.get(options).then(function (client) {
     client.addTorrent(magnet, { download_location: '/home/data/torrents' });
 
     setInterval(function () {
-        client.updateUi().then(function (uiState) {
-            if (uiState.torrents && uiState.torrents[hash]) {
+        client.updateUi(['download_payload_rate', 'progress'], {hash: '3e6d9dd3d9caa1b602bc1f758bd2c869fa05093f'})
+            .then(function (uiState) {
                 var torrent = uiState.torrents[hash];
                 console.log('Download speed: %s B/s, Progress: %s %',
                     torrent.download_payload_rate,
                     torrent.progress);
-            }
-        });
+            });
     }, 500);
 });
