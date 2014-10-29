@@ -6,16 +6,20 @@ var options = {
     apiUrl: 'http://localhost:8112/json',
     password: 'deluge'
 };
-DelugeClient.get(options).then(function (client) {
-    client.addTorrent(magnet, { download_location: '/home/data/torrents' });
 
-    setInterval(function () {
-        client.updateUi(['download_payload_rate', 'progress'], {hash: '3e6d9dd3d9caa1b602bc1f758bd2c869fa05093f'})
-            .then(function (uiState) {
-                var torrent = uiState.torrents[hash];
-                console.log('Download speed: %s B/s, Progress: %s %',
-                    torrent.download_payload_rate,
-                    torrent.progress);
-            });
-    }, 500);
-});
+var client = new DelugeClient(options);
+client.addTorrent(magnet, { download_location: '/home/data/torrents' });
+setInterval(function () {
+    client.updateUi(['download_payload_rate', 'progress'], {hash: '3e6d9dd3d9caa1b602bc1f758bd2c869fa05093f'})
+        .then(function (uiState) {
+            var torrent = uiState.torrents[hash];
+            if (!torrent) {
+                console.log('Torrent not found');
+                return;
+            }
+
+            console.log('Download speed: %s B/s, Progress: %s %',
+                torrent.download_payload_rate,
+                torrent.progress);
+        });
+}, 500);

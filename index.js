@@ -14,20 +14,18 @@ function DelugeClient (options) {
     }, options || {});
 
     // Use agent() to remember cookies
-    this.agent = request.agent();
+    this._agent = request.agent();
 }
 
 /**
- * Factory method returning initialized and authenticated instance of Deluge
- * client. If authentication fails (or something else), an error is thrown that
- * can be caught via .catch().
- *
- * @param {Object=} options - Hash specifying id, apiUrl and password for connecting.
- * @returns {Promise.<DelugeClient>} - Promise for client instance.
+ * Get Promise for the authentication request.
+ * @returns {Promise}
  */
-DelugeClient.get = function (options) {
-    var client = new DelugeClient(options);
-    return client.auth();
+DelugeClient.prototype._getAuthPromise = function () {
+    if (!this._authPromise) {
+        this._authPromise = this._auth();
+    }
+    return this._authPromise;
 };
 
 /**
@@ -38,16 +36,26 @@ DelugeClient.get = function (options) {
  * http://deluge-webapi.readthedocs.org/en/latest/quickstart.html#api-methods
  *
  * Function automatically checks for errors and if request for some reason fails,
- * an Error is thrown. Promise doesn't return whole response body, only relevant
- * result (which is usually parsed JSON object, but it can also be a simple
- * string like 'true' for example).
+ * an Error is thrown. Promise doesn't return the whole response body, only
+ * relevant result (which is usually parsed JSON object, but it can also be
+ * a simple string like 'true' for example).
  *
  * @param {string} method - Method name, i. e. 'auth.login'
  * @param {Array} params - List of params
+ * @param {boolean=} requireAuthentication - Request should be performed after
+ *  successful authentication. The default value is true.
  * @returns {Promise.<*>} - Request result.
  */
-DelugeClient.prototype.request = function (method, params) {
-    return this.agent
+DelugeClient.prototype.request = function (method, params, requireAuthentication) {
+    // If authentication is required, first wait until the client is
+    // authenticated and only then perform the request.
+    if (requireAuthentication === undefined || requireAuthentication) {
+        return this._getAuthPromise().then(function() {
+            return this.request(method, params, false);
+        }.bind(this));
+    }
+
+    return this._agent
         .post(this.options.apiUrl)
         .buffer(true)
         .set('Accept-Encoding', 'gzip, deflate')
@@ -86,18 +94,16 @@ DelugeClient.prototype.request = function (method, params) {
  * the authentication is successful, received COOKIE is remembered and used in
  * every request in the future. If the authentication fails, an Error is thrown.
  *
- * Remember to call this method before you start using this client. If you
- * create an instance of this client using provided DelugeClient.get() factory
- * function, auth is called for you.
- *
- * @returns {Promise.<DelugeClient>} - Self instance.
+ * @returns {Promise}
  */
-DelugeClient.prototype.auth = function () {
-    var client = this;
-    return this.request('auth.login', [this.options.password])
-        .then(function () {
-            return client;
-        });
+DelugeClient.prototype._auth = function () {
+    return this.request('auth.login', [this.options.password], false)
+        .then(function (result) {
+            if (result === false) {
+                throw new Error('Authentication failed');
+            }
+            return result;
+        })
 };
 
 /**
