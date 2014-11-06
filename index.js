@@ -1,6 +1,7 @@
 require('superagent-bluebird-promise');
 var request = require('superagent');
 var _ = require('lodash');
+var debug = require('debug')('deluge-client');
 
 /**
  * @param {Object=} options - Hash specifying id, apiUrl and password for connecting.
@@ -55,6 +56,7 @@ DelugeClient.prototype.request = function (method, params, requireAuthentication
         }.bind(this));
     }
 
+    debug('calling method "%s" with params: %j', method, params);
     return this._agent
         .post(this.options.apiUrl)
         .buffer(true)
