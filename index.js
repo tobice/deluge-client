@@ -82,7 +82,12 @@ DelugeClient.prototype.request = function (method, params, requireAuthentication
             // API is probably not sending proper headers, so we have to parse
             // the response manually. Calling .buffer(true) is essential to
             // get this working.
-            var json = JSON.parse(res.text);
+            try {
+                var json = JSON.parse(res.text);
+            }
+            catch (error) {
+                throw new Error('Not a valid JSON response.' + error);
+            }
 
             if (json.error) {
                 throw new Error('API call failed:' + json.error.message);
@@ -101,6 +106,9 @@ DelugeClient.prototype.request = function (method, params, requireAuthentication
 DelugeClient.prototype._auth = function () {
     return this.request('auth.login', [this.options.password], false)
         .then(function (result) {
+            // Deluge API does not return any error (the request looks like
+            // a successful one) if the password is wrong. We have to check
+            // the result value.
             if (result === false) {
                 throw new Error('Authentication failed');
             }

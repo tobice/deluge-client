@@ -3,6 +3,9 @@
     "version": "0.0.1",
     "description": "JavaScript Deluge client.",
     "main": "index.js",
+    "scripts": {
+        "test": "./node_modules/mocha/bin/mocha"
+    },
     "repository": {},
     "author": "Tobiáš Potoček",
     "email": "tobiaspotocek@gmail.com",
@@ -13,5 +16,13 @@
         "lodash": "~2.4.1",
         "superagent": "~0.20.0",
         "superagent-bluebird-promise": "~0.3.0"
+    },
+    "devDependencies": {
+        "mocha": "*",
+        "chai": "*",
+        "chai-as-promised": "*",
+        "express": "~4.*",
+        "cookie-parser": "*",
+        "body-parser": "*"
     }
 }
