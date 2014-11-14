@@ -30,11 +30,7 @@ DelugeClient.prototype._getAuthPromise = function () {
 };
 
 /**
- * Perform API request.
- *
- * For complete list of supported methods see:
- * http://deluge-torrent.org/docs/master/modules/ui/web/json_api.html
- * http://deluge-webapi.readthedocs.org/en/latest/quickstart.html#api-methods
+ * Make a bare API call on Deluge server.
  *
  * Function automatically checks for errors and if request for some reason fails,
  * an Error is thrown. Promise doesn't return the whole response body, only
@@ -43,19 +39,9 @@ DelugeClient.prototype._getAuthPromise = function () {
  *
  * @param {string} method - Method name, i. e. 'auth.login'
  * @param {Array} params - List of params
- * @param {boolean=} requireAuthentication - Request should be performed after
- *  successful authentication. The default value is true.
  * @returns {Promise.<*>} - Request result.
  */
-DelugeClient.prototype.request = function (method, params, requireAuthentication) {
-    // If authentication is required, first wait until the client is
-    // authenticated and only then perform the request.
-    if (requireAuthentication === undefined || requireAuthentication) {
-        return this._getAuthPromise().then(function() {
-            return this.request(method, params, false);
-        }.bind(this));
-    }
-
+DelugeClient.prototype._request = function (method, params) {
     debug('calling method "%s" with params: %j', method, params);
     return this._agent
         .post(this.options.apiUrl)
@@ -104,7 +90,7 @@ DelugeClient.prototype.request = function (method, params, requireAuthentication
  * @returns {Promise}
  */
 DelugeClient.prototype._auth = function () {
-    return this.request('auth.login', [this.options.password], false)
+    return this._request('auth.login', [this.options.password])
         .then(function (result) {
             // Deluge API does not return any error (the request looks like
             // a successful one) if the password is wrong. We have to check
@@ -117,6 +103,45 @@ DelugeClient.prototype._auth = function () {
 };
 
 /**
+ * Call Deluge API method with given params.
+ *
+ * For complete list of supported methods see:
+ * http://deluge-torrent.org/docs/master/modules/ui/web/json_api.html
+ * http://deluge-webapi.readthedocs.org/en/latest/quickstart.html#api-methods
+ *
+ * This method makes sure that all calls are made only after the client has been
+ * successfully authenticated. If the session with the server expires, a new
+ * one is started automatically.
+ *
+ * Function automatically checks for errors and if request for some reason fails,
+ * an Error is thrown. Promise doesn't return the whole response body, only
+ * relevant result (which is usually parsed JSON object, but it can also be
+ * a simple string like 'true' for example).
+ *
+ * @param {string} method - Method name, i. e. 'auth.login'
+ * @param {Array} params - List of params
+ * @returns {Promise.<*>} - Request result.
+ */
+DelugeClient.prototype.call = function (method, params) {
+    return this._getAuthPromise()
+        .then(function() {
+            return this._request(method, params);
+        }.bind(this))
+        .catch(function (error) {
+            // If this error appears, it means that the session id in stored
+            // cookies has expired and we have to authenticate the client again
+            if (error.message === 'API call failed:Not authenticated') {
+                this._authPromise = null;
+                return this.call(method, params);
+            } else {
+                throw error;
+            }
+        }.bind(this));
+};
+
+
+
+/**
  * Add torrent.
  *
  * @param {string} metainfo - Base64 torrent data or a magnet link
@@ -124,7 +149,7 @@ DelugeClient.prototype._auth = function () {
  * @returns {Promise.<string>} - Returns 'true' in case of success.
  */
 DelugeClient.prototype.addTorrent = function (metainfo, options) {
-    return this.request('webapi.add_torrent', [metainfo, options]);
+    return this.call('webapi.add_torrent', [metainfo, options]);
 };
 
 /**
@@ -135,7 +160,7 @@ DelugeClient.prototype.addTorrent = function (metainfo, options) {
  * @returns {Promise.<*>}
  */
 DelugeClient.prototype.getTorrents = function (torrents, data) {
-    return this.request('webapi.get_torrents', [
+    return this.call('webapi.get_torrents', [
         torrents || null,
         data || null
     ]);
@@ -148,7 +173,7 @@ DelugeClient.prototype.getTorrents = function (torrents, data) {
  * @returns {Promise.<Object>}
  */
 DelugeClient.prototype.getTorrentFiles = function (torrentId) {
-    return this.request('web.get_torrent_files', [torrentId]);
+    return this.call('web.get_torrent_files', [torrentId]);
 };
 
 /**
@@ -159,7 +184,7 @@ DelugeClient.prototype.getTorrentFiles = function (torrentId) {
  * @returns {Promise.<Object>}
  */
 DelugeClient.prototype.updateUi = function (data, filter) {
-    return this.request('web.update_ui', [
+    return this.call('web.update_ui', [
         data || ["name", "hash", "download_payload_rate", "upload_payload_rate", "eta", "progress"],
         filter || {}
     ]);
