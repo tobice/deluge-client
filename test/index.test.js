@@ -10,11 +10,18 @@ var PORT = process.env.PORT || 3010;
 var PASSWORD = 'password';
 var SESSION_ID = '9f981b27fcc2bba921ae2112eeb53cae2420';
 
-function makeResponse(id, result, error) {
+function makeResponse(id, result, error, code) {
+    var errorObj;
+    if (error) {
+        errorObj = {
+            message: error,
+            code: code || 0
+        }
+    }
     return JSON.stringify({
         id: id,
         result: result,
-        error: error
+        error: errorObj
     })
 }
 
@@ -45,13 +52,20 @@ app.post('/json', function (req, res) {
 
     // Verify cookies
     if (!req.cookies._session_id || req.cookies._session_id != SESSION_ID) {
-        return res.send(makeResponse(body.id, null, {
-            message: 'Not authenticated',
-            code: 1
-        }))
+        return res.send(makeResponse(body.id, null, 'Not authenticated', 1));
     }
 
-    res.send(makeResponse(body.id, 'ok'));
+    // Sample method that returns given params
+    if (body.method == 'web.return_params') {
+        return res.send(makeResponse(body.id, body.params))
+    }
+
+    // Another sample method
+    if (body.method == 'web.update_ui') {
+        return res.send(makeResponse(body.id, 'status'));
+    }
+
+    res.send(makeResponse(0, null, 'API call failed: Unknown method'));
 });
 
 app.listen(PORT);
@@ -99,13 +113,27 @@ describe('DelugeClient', function () {
     });
 
     describe('when the password is correct', function () {
-       it('should run auth request and remember the session id', function () {
-           var client = new DelugeClient({
-               apiUrl: 'http://localhost:' + PORT + '/json',
-               password: PASSWORD
-           });
+        var client = new DelugeClient({
+            apiUrl: 'http://localhost:' + PORT + '/json',
+            password: PASSWORD
+        });
+
+        it('should run auth request and remember the session id', function () {
            return client.updateUi().should.eventually.be.fulfilled;
-       });
+        });
+
+        describe('when a method is called', function () {
+            it('should return its result', function () {
+                var params = [ 'first', 'second' ];
+                return client.call('web.return_params', params).should.become(params);
+            });
+        });
+
+        describe('when an unknown method is called', function () {
+           it('should throw "API call failed" exception', function () {
+               return client.call('web.unknown method', []).should.eventually.be.rejectedWith(Error, 'API call failed: Unknown method');
+           })
+        });
     });
 
     describe('when session id expires', function () {

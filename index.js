@@ -72,11 +72,12 @@ DelugeClient.prototype._request = function (method, params) {
                 var json = JSON.parse(res.text);
             }
             catch (error) {
-                throw new Error('Not a valid JSON response.' + error);
+                throw new Error('Not a valid JSON response. ' + error);
             }
 
             if (json.error) {
-                throw new Error('API call failed:' + json.error.message);
+                var message = json.error.message || json.error;
+                throw new Error('API call failed: ' + message);
             }
             return json.result;
         });
@@ -130,7 +131,7 @@ DelugeClient.prototype.call = function (method, params) {
         .catch(function (error) {
             // If this error appears, it means that the session id in stored
             // cookies has expired and we have to authenticate the client again
-            if (error.message === 'API call failed:Not authenticated') {
+            if (error.message === 'API call failed: Not authenticated') {
                 this._authPromise = null;
                 return this.call(method, params);
             } else {
