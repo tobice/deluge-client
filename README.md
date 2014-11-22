@@ -1,6 +1,6 @@
 #Deluge Client
 
-A simple promise based JavaScript library that will let you use Deluge API
+A simple promise based JavaScript library that will let you use Deluge Json API.
 It uses the same API as the Deluge web client. It works as a thin
 layer that will take care of authentication and error handling.
 
