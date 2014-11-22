@@ -39,4 +39,4 @@ plugin to work).
 Another way to discover particular API methods is to monitor the requests
 made by the web client in the browser.
 
-Licence [MIT](./Licence)
+Licence [MIT](Licence)
