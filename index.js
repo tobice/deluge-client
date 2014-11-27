@@ -186,7 +186,7 @@ DelugeClient.prototype.getTorrentFiles = function (torrentId) {
  */
 DelugeClient.prototype.updateUi = function (data, filter) {
     return this.call('web.update_ui', [
-        data || ["name", "hash", "download_payload_rate", "upload_payload_rate", "eta", "progress"],
+        data || ["name", "hash", "download_payload_rate", "upload_payload_rate", "eta", "progress", "state"],
         filter || {}
     ]);
 };
