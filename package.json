@@ -14,7 +14,7 @@
         "debug": "~2.1.0",
         "bluebird": "~2.3.4",
         "lodash": "~2.4.1",
-        "superagent": "~0.20.0",
+        "superagent": "~5.1.0",
         "superagent-bluebird-promise": "~0.3.0"
     },
     "devDependencies": {
